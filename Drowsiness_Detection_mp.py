@@ -22,6 +22,9 @@ class Drowsiness_Detection_mp():
         self.mp_drawing = mp.solutions.drawing_utils
         self.drawing_spec = self.mp_drawing.DrawingSpec(thickness=2, circle_radius=1, color=(0, 0, 255))
 
+        # 인식 status
+        self.detection_status = 0
+
         # 얼굴 부위 리스트화
         self.parts = ['left_eye', 'right_eye', 'top_lip', 'bottom_lip', 'entire_lip', 'face_contour']
 
@@ -77,13 +80,22 @@ class Drowsiness_Detection_mp():
 
             face_detection_time = 10
             if elapsed_time <= face_detection_time:
-                self.find_standard()
-                self.draw_bbox(mode='processing_on')
+                if self.detection_status != -1:
+                    self.find_standard()
+                    self.draw_bbox(mode='processing_on')
+                else:
+                    print('CANNOT detect your face')
             elif face_detection_time < elapsed_time < face_detection_time + 1:
-                self.find_threshold()
-                self.draw_bbox(mode='processing_on')
+                if self.detection_status != -1:
+                    self.find_threshold()
+                    self.draw_bbox(mode='processing_on')
+                else:
+                    print('CANNOT detect your face')
             else:
-                self.predict()
+                if self.detection_status != -1:
+                    self.predict()
+                else:
+                    print('CANNOT detect your face')
 
             cv2.imshow('frm', self.frame)
             if cv2.waitKey(1) == 27:
@@ -101,7 +113,7 @@ class Drowsiness_Detection_mp():
                            self.parts[5]: []}
 
         self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
-        image_height, image_width, _ = self.frame.shape
+        self.frame_height, self.frame_width, _ = self.frame.shape
 
         # landmark 추출
         self.result = self.face_mesh.process(self.frame)
@@ -111,8 +123,8 @@ class Drowsiness_Detection_mp():
         if self.result.multi_face_landmarks:
             for face_landmarks in self.result.multi_face_landmarks:
                 for idx, landmark in enumerate(face_landmarks.landmark):
-                    x = int(landmark.x * image_width)
-                    y = int(landmark.y * image_height)
+                    x = int(landmark.x * self.frame_width)
+                    y = int(landmark.y * self.frame_height)
                     self.coordinates.append([x, y])
 
         # 얼굴 부위별 좌표 따기
@@ -120,9 +132,11 @@ class Drowsiness_Detection_mp():
             for idx in self.part_idx[part]:
                 try:
                     self.part_coord[part].append(self.coordinates[idx])
+                    self.detection_status = 0
                 except IndexError:
-
+                    self.detection_status = -1
                 except TypeError:
+                    self.detection_status = -1
 
     # function: draw circle of face part landmarks coordinates
     def draw_circle(self):
