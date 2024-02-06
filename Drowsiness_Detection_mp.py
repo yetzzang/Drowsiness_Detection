@@ -4,6 +4,8 @@ import numpy as np
 import time
 from statistics import mode, mean
 import winsound as sd
+import threading
+import pygame
 
 class Drowsiness_Detection_mp():
     # function: initialize the class
@@ -62,6 +64,8 @@ class Drowsiness_Detection_mp():
     # input: self
     # function: process the cam using MediaPipe facemesh
     def process_cam(self):
+        pygame.mixer.init()
+        self.alert_sound = pygame.mixer.Sound('siren_sound.wav')
         start_time = time.time()
         self.cap = cv2.VideoCapture(0)
         self.cap.set(cv2.CAP_PROP_FPS, 30)
@@ -396,8 +400,22 @@ class Drowsiness_Detection_mp():
         eye_slope_list = self.standard_list2['eye_slope_left'] + self.standard_list2['eye_slope_right']
         eye_ratio_list = self.standard_list2['eye_ratio_left'] + self.standard_list2['eye_slope_right']
         # 재확인 필요
-        self.eye_slope_threshold = mean(eye_slope_list) - 8
+        self.eye_slope_threshold = mean(eye_slope_list)
         self.eye_ratio_threshold = mean(eye_ratio_list) / 10
+
+    # 소리 재생을 위한 스레드 함수
+    def play_sound_thread(self):
+        self.alert_sound.play()
+
+    # 소리 재생 함수
+    def play_sound(self):
+        # 소리 재생을 위한 스레드 생성 및 시작
+        thread = threading.Thread(target=self.play_sound_thread)
+        thread.start()
+
+    # 소리 정지 함수
+    def stop_sound(self):
+        self.alert_sound.stop()
 
     # input: self
     # function: print if driver is drowsy
@@ -405,11 +423,12 @@ class Drowsiness_Detection_mp():
         eye_prediction = self.eye_predict()
         if eye_prediction == 2:
             self.draw_bbox(mode='processing_off', alert=eye_prediction)
-            self.beepsound()
+            self.play_sound()  # 스레드를 사용하여 소리 재생
         elif eye_prediction == 1:
             self.draw_bbox(mode='processing_off', alert=eye_prediction)
         else:
             self.draw_bbox(mode='processing_off')
+            self.stop_sound()
 
 
 # 테스트 코드
