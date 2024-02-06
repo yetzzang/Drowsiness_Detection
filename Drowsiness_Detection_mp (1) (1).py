@@ -55,11 +55,16 @@ class Drowsiness_Detection_mp():
 
 
 
-        self.cap = cv2.VideoCapture(0)
+
+
+        print(self.cap.get(cv2.CAP_PROP_FPS))
 
         self.prev_time = 0
         self.frame_counter = 0
 
+        self.cap.set(cv2.CAP_PROP_FPS, 30)
+
+        print(self.cap.get(cv2.CAP_PROP_FPS))
 
         while self.cap.isOpened():
             success, self.frame = self.cap.read()
