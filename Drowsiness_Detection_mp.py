@@ -41,6 +41,8 @@ class Drowsiness_Detection_mp():
                                          109, 10]}
 
         # 기준값 찾기 위해 declare
+        self.standard_exemption_left_count = 0
+        self.standard_exemption_right_count = 0
         self.eye_slope_threshold = 0
         self.eye_ratio_threshold = 0
         self.standards = ['eye_slope_left', 'eye_slope_right', 'eye_ratio_left', 'eye_ratio_right']
@@ -80,22 +82,24 @@ class Drowsiness_Detection_mp():
 
             face_detection_time = 10
             if elapsed_time <= face_detection_time:
+                if not self.find_standard():
+                    self.put_text_if_not_detected('noCenter')
                 if self.detection_status != -1:
                     self.find_standard()
                     self.draw_bbox(mode='processing_on')
                 else:
-                    print('CANNOT detect your face')
+                    self.put_text_if_not_detected('noDetection')
             elif face_detection_time < elapsed_time < face_detection_time + 1:
                 if self.detection_status != -1:
                     self.find_threshold()
                     self.draw_bbox(mode='processing_on')
                 else:
-                    print('CANNOT detect your face')
+                    self.put_text_if_not_detected('noDetection')
             else:
                 if self.detection_status != -1:
                     self.predict()
                 else:
-                    print('CANNOT detect your face')
+                    self.put_text_if_not_detected('noDetection')
 
             cv2.imshow('frm', self.frame)
             if cv2.waitKey(1) == 27:
@@ -186,6 +190,13 @@ class Drowsiness_Detection_mp():
             self.draw_bbox_basic(color)
         elif mode == 'processing_off':
             cv2.putText(self.frame, 'Drowsiness Detection: ON', (x - 5, y - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5,(255, 255, 255), 1)
+
+    def put_text_if_not_detected(self, mode):
+        height, width, _ = self.frame.shape
+        if mode == 'noDetection':
+            cv2.putText(self.frame, 'CANNOT detect your face',(int(width / 2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1,(255, 255, 255), 2)
+        elif mode == 'noCenter':
+            cv2.putText(self.frame, 'Face misalignment detected. Please adjust to center and face the screen straight', (int(width / 2), int(height / 2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
     # function: 경고음 송출
     def beepsound(self):
@@ -374,27 +385,41 @@ class Drowsiness_Detection_mp():
     # input: self
     # function: find the standard value for each algorithm
     def find_standard(self):
+        restart_num = 10
         frame_count = 15
-        eye_slope = self.cal_eye_slope()
-        eye_slope_left, eye_slope_right = [float(i) for i in eye_slope.values()]
-        eye_ratio = self.cal_eye_ratio()
-        eye_ratio_left, eye_ratio_right = [float(i) for i in eye_ratio.values()]
-        self.standard_list[self.standards[0]].append(eye_slope_left)
-        self.standard_list[self.standards[1]].append(eye_slope_right)
-        self.standard_list[self.standards[2]].append(eye_ratio_left)
-        self.standard_list[self.standards[3]].append(eye_ratio_right)
-        if len(self.standard_list[self.standards[-1]]) == frame_count:
-            for i in range(len(self.standard_list)):
-                avg = mean(self.standard_list[self.standards[i]])
-                self.standard_list[self.standards[i]] = []
-                self.standard_list2[self.standards[i]].append(avg)
+
+        if self.standard_exemption_left_count <= 10 or self.standard_exemption_left_count <= 10:
+            eye_slope = self.cal_eye_slope()
+            eye_slope_left, eye_slope_right = [float(i) for i in eye_slope.values()]
+            eye_ratio = self.cal_eye_ratio()
+            eye_ratio_left, eye_ratio_right = [float(i) for i in eye_ratio.values()]
+            self.standard_list[self.standards[0]].append(eye_slope_left)
+            self.standard_list[self.standards[1]].append(eye_slope_right)
+            self.standard_list[self.standards[2]].append(eye_ratio_left)
+            self.standard_list[self.standards[3]].append(eye_ratio_right)
+            if len(self.standard_list[self.standards[-1]]) == frame_count:
+                for i in range(len(self.standard_list)):
+                    avg = mean(self.standard_list[self.standards[i]])
+                    if i == 0:
+                        if avg > restart_num:
+                            self.standard_exemption_left_count += 1
+                    elif i == 1:
+                        if avg > restart_num:
+                            self.standard_exemption_left_count += 1
+                    self.standard_list[self.standards[i]] = []
+                    self.standard_list2[self.standards[i]].append(avg)
+                    print(self.standard_exemption_left_count, self.standard_exemption_right_count)
+            return True
+        else:
+            return False
+
 
     # input: self
     # function: find the threshold of eye_slope, eye_ratio
     # output: return thresholds
     def find_threshold(self):
         eye_slope_list = self.standard_list2['eye_slope_left'] + self.standard_list2['eye_slope_right']
-        eye_ratio_list = self.standard_list2['eye_ratio_left'] + self.standard_list2['eye_slope_right']
+        eye_ratio_list = self.standard_list2['eye_ratio_left'] + self.standard_list2['eye_ratio_right']
         # 재확인 필요
         self.eye_slope_threshold = mean(eye_slope_list) - 8
         self.eye_ratio_threshold = mean(eye_ratio_list) / 10
