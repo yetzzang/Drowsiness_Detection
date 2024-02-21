@@ -344,21 +344,30 @@ class Drowsiness_Detection_mp():
         v_a = self.part_coord['bottom_lip'][3][1] - self.part_coord['top_lip'][3][1]
         v_b = self.part_coord['bottom_lip'][4][1] - self.part_coord['top_lip'][4][1]
         v_c = self.part_coord['bottom_lip'][5][1] - self.part_coord['top_lip'][5][1]
+
         coord_vertical_mean = (v_a + v_b + v_c) / 3
-        mouth_threshold = 15
-        global frequency
-        frequency = 0
+
+        mouth_threshold = 16
+
         if coord_vertical_mean >= mouth_threshold:
-            frequency += 1
-        else: # coord_vertical_mean < mouth_threshold
-            if frequency < 40:
+            self.frequency += 1
+            if self.frequency > 50:
+                return 1
+            else:
                 return 0
-            else: # freqeuncy >= 40
-                frequency = frequency - 3
-                if frequency < 0:
-                    frequency = 0
-        if frequency > 40:
-            return 1
+        else:  # coord_vertical_mean < mouth_threshold
+            if self.frequency < 50:
+                return 0  # no wawn
+            else:  # freqeuncy >= 40
+                self.frequency = self.frequency - 20
+                if self.frequency < 0:
+                    self.frequency = 0
+                return 1  # wawn
+    
+
+
+
+    
 
     # input: self
     # function: calculate mouth angle
@@ -380,8 +389,86 @@ class Drowsiness_Detection_mp():
     # function: predict open or close by mouth angle
     # output: return 0 if open, 1 if closed
     def mouth_angle_predict_fps(self):
-        pass
+        mouth_angle_summary = self.cal_mouth_angle()
 
+        angle_threshold = 94
+
+        for angle in mouth_angle_summary.values():
+            if angle > angle_threshold:
+                return 1
+        return 0
+        
+
+
+    
+    def update_mouth_open_duration(self):
+        if self.mouth_height_predict_fps() == 1 or self.mouth_angle_predict_fps() == 1:
+            self.mouth_open_duration += 1
+        else:
+            self.mouth_open_duration = 0
+
+
+    
+    def yawn_predict_fps(self):
+        # 입이 열린 상태가 일정 시간 이상 지속되면 하품으로 판단
+        self.update_mouth_open_duration()
+
+        if self.mouth_open_duration >= self.mouth_open_threshold:
+            return 1  # 하품
+        else:
+            return 0  # 깨어있음
+
+
+
+
+
+    
+    # input: self
+    # function: predict open or close by mouth angle
+    # output: return 0 if open, 1 if closed
+    def mouth_angle_predict_fps(self):
+        mouth_angle_summary = self.cal_mouth_angle()
+
+        angle_threshold = 94
+
+        for angle in mouth_angle_summary.values():
+            if angle > angle_threshold:
+                return 1
+        return 0
+
+
+
+    
+    def mouth_predict_func(self):
+
+        if self.frame_count < 50:
+            self.frame_count += 1
+            return 0
+        else:
+            # 큐에 현재 프레임의 예측값 추가
+            prediction = self.yawn_predict_fps()
+
+            self.mouth_open_queue.append(prediction)
+
+            del self.mouth_open_queue[0]
+
+            if self.mouth_open_queue.count(1) <= 20:
+            #(mode(self.mouth_open_queue) == 0):
+
+                return 0
+            elif self.mouth_open_queue.count(1) >= 20:
+            #(mode(self.mouth_open_queue) == 1):
+
+                if all(value == 1 for value in self.mouth_open_queue):
+                    return 2
+                else:
+                    return 1
+
+    
+
+
+
+    
     # input: self
     # function: find the standard value for each algorithm
     def find_standard(self):
