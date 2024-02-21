@@ -66,10 +66,7 @@ class Drowsiness_Detection_mp():
         #mouth predict 관련 변수
         self.frequency = 0
         self.frame_count = 0  # 프레임 카운트 초기화
-        self.is_yawning = False  # 하품 중 여부를 나타내는 플래그
-        self.yawn_frame_count = 0  # 하품 중인 프레임 카운트
-        self.is_drowsy = False  # 졸음 중 여부를 나타내는 플래그
-        self.drowsy_frame_count = 0  # 졸음 중인 프레임 카운트
+       
 
         # 입 벌림 예측을 위한 큐 및 threshold 설정
         self.mouth_open_queue = [0 for _ in range(50)]
