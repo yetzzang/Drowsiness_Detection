@@ -69,7 +69,7 @@ class Drowsiness_Detection_mp():
        
 
         # 입 벌림 예측을 위한 큐 및 threshold 설정
-        self.mouth_open_queue = [0 for _ in range(50)]
+        self.mouth_open_queue = [0 for _ in range(100)]
         self.mouth_open_duration = 0
         self.mouth_open_threshold = 10
 
@@ -423,7 +423,7 @@ class Drowsiness_Detection_mp():
 
     def mouth_predict(self):    #predict_func(self)에서 이름 변경
 
-        if self.frame_count < 50:
+        if self.frame_count < 10:
             self.frame_count += 1
             return 0
         else:
@@ -434,11 +434,11 @@ class Drowsiness_Detection_mp():
 
             del self.mouth_open_queue[0]
 
-            if self.mouth_open_queue.count(1) <= 20:
+            if self.mouth_open_queue.count(1) <= 5:
             #(mode(self.mouth_open_queue) == 0):
 
                 return 0
-            elif self.mouth_open_queue.count(1) >= 20:
+            elif self.mouth_open_queue.count(1) >= 5:
             #(mode(self.mouth_open_queue) == 1):
 
                 if all(value == 1 for value in self.mouth_open_queue):
