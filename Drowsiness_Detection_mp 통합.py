@@ -382,21 +382,6 @@ class Drowsiness_Detection_mp():
                 return 1
         return 0
 
-    # input: self
-    # function: calculate mouth angle
-    # output: summary of angles
-    def cal_mouth_angle(self):
-        summary = {}
-        for i in range(4):
-            point1 = self.coordinates[self.part_idx['bottom_lip'][0]]
-            point2 = self.coordinates[self.part_idx['top_lip'][i+1]]
-            point3 = self.coordinates[self.part_idx['bottom_lip'][i+1]]
-
-            angle_rad = np.arctan2(point3[1] - point1[1], point3[0] - point1[0]) - \
-                        np.arctan2(point2[1] - point1[1], point2[0] - point1[0])
-            angle_deg = np.degrees(angle_rad)
-            summary[i+1] = angle_deg
-        return summary
 
     def mouth_height_predict_fps(self):
         v_a = self.part_coord['bottom_lip'][3][1] - self.part_coord['top_lip'][3][1]
@@ -438,18 +423,6 @@ class Drowsiness_Detection_mp():
         else:
             return 0  # 깨어있음
 
-    # input: self
-    # function: predict open or close by mouth angle
-    # output: return 0 if open, 1 if closed
-    def mouth_angle_predict_fps(self):
-        mouth_angle_summary = self.cal_mouth_angle()
-
-        angle_threshold = 94
-
-        for angle in mouth_angle_summary.values():
-            if angle > angle_threshold:
-                return 1
-        return 0
 
     def mouth_predict(self):    #predict_func(self)에서 이름 변경
 
@@ -479,22 +452,6 @@ class Drowsiness_Detection_mp():
 
 
 
-            '''
-            if prediction == 1 and self.is_drowsy:
-                self.is_drowsy = False
-                self.drowsy_frame_count = 0
-                return 2  # 졸음 시작
-            elif prediction == 0 and self.is_drowsy:
-                self.drowsy_frame_count += 1
-                if self.drowsy_frame_count > 30:
-                    print('Warning! Drowsiness.')
-                    self.is_drowsy = False
-                    self.drowsy_frame_count = 0
-                    return 2  # 졸음 종료
-            elif prediction == 0:
-                self.is_yawning = False
-                self.drowsy_frame_count = 0
-            '''
 
     # input: self
     # function: find the standard value for each algorithm
